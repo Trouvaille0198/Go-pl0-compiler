@@ -87,7 +87,7 @@ func (t Token) IsOperator() bool    { return operator_beg < t && t < operator_en
 func (t Token) IsKeyword() bool     { return keyword_beg < t && t < keyword_end }
 func (t Token) IsRelationOpr() bool { return relation_optr_beg < t && t < relation_optr_end }
 
-// 枚举的字符串表示
+// 符号枚举在程序中的表示
 var tokens = [...]string{
 	CONSTSYM: "const",
 	VARSYM:   "var",
@@ -123,6 +123,7 @@ var tokens = [...]string{
 	SEMICOLONSYM: ";",
 	BECOMESSYM:   ":=",
 
+	// 以下符号不会再程序中出现
 	BADTOKEN:  "无效字符",
 	NUMBERSYM: "数字",
 	IDENTSYM:  "变量标识符",
@@ -130,10 +131,61 @@ var tokens = [...]string{
 	EOFSYM: "文档已结束",
 }
 
-// var Tokens = tokens
+// 符号枚举的说明
+var tokenDesc = [...]string{
+	CONSTSYM: "constsym",
+	VARSYM:   "varsym",
+	PROCSYM:  "proceduresym",
+	CALLSYM:  "callsym",
+	BEGINSYM: "beginsym",
+	ENDSYM:   "endsym",
+	IFSYM:    "ifsym",
+	THENSYM:  "thensym",
+	ELSESYM:  "elsesym",
+	WHILESYM: "whilesym",
+	DOSYM:    "dosym",
+	READSYM:  "readsym",
+	WRITESYM: "writesym",
+	ODDSYM:   "oddsym",
+
+	PLUSSYM:    "plus",
+	MINUSYM:    "minus",
+	MULSYM:     "times",
+	SLASHSYM:   "slash",
+	LPARENTSYM: "lparen",
+	RPARENTSYM: "rparen",
+	COMMASYM:   "comma",
+	PERIODSYM:  "period",
+
+	EQLSYM: "eql",
+	LESSYM: "lss",
+	GTRSYM: "gtr",
+	NEQSYM: "neq",
+	LEQSYM: "leq",
+	GEQSYM: "geq",
+
+	SEMICOLONSYM: "semicolon",
+	BECOMESSYM:   "becomes",
+
+	// 以下符号不会再程序中出现
+	BADTOKEN:  "无效字符",
+	NUMBERSYM: "number",
+	IDENTSYM:  "ident",
+
+	EOFSYM: "EOF",
+}
 
 // String 返回Token的字符串表示
 func (t Token) String() string {
+	if 0 <= t && t < Token(len(tokenDesc)) {
+		return tokenDesc[t]
+	} else {
+		return "token(" + strconv.Itoa(int(t)) + ")"
+	}
+}
+
+// StringInCode 返回Token在程序中的字面量表示
+func (t Token) StringInCode() string {
 	if 0 <= t && t < Token(len(tokens)) {
 		return tokens[t]
 	} else {

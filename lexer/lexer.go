@@ -4,6 +4,7 @@ import (
 	"gopl0/fp"
 	"gopl0/token"
 	"gopl0/utils"
+	"strconv"
 )
 
 const (
@@ -36,6 +37,16 @@ type Symbol struct {
 	Id    token.Token
 	Value []rune // 用户自定义的标识符值(若有)
 	Num   int    // 用户自定义的数(若有)
+}
+
+func (s *Symbol) String() string {
+	if s.Id.IsIdent() {
+		return "(indent, " + string(s.Value) + ")"
+	}
+	if s.Id.IsNumber() {
+		return "(number, " + strconv.Itoa(s.Num) + ")"
+	}
+	return "(" + s.Id.String() + ", " + s.Id.StringInCode() + ")"
 }
 
 // GetSym DFA方式获取符号
@@ -117,7 +128,7 @@ outerLoop:
 				curState = START
 				idToken := token.GetIdToken(string(char[:charIndex]))
 				if idToken == token.IDENTSYM {
-					var newVal []rune
+					newVal := make([]rune, charIndex)
 					copy(newVal, char[:charIndex])
 					l.symbols = append(l.symbols, Symbol{Id: idToken, Value: newVal})
 				} else {
