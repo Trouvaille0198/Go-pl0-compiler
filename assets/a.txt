@@ -1,7 +1,7 @@
-const num=100
-var a1, b2
-begin
-    read(a1)
-    b2:=A1+nUm
-    write(a1,b2)
-end.
+Const num=100
+Var a1, b2
+Begin
+    Read(a1)
+    b2:=a1+num
+    write(A1,B2)
+End.

@@ -12,7 +12,7 @@ func init() {
 
 type Token int
 
-// SYM 枚举
+// 符号枚举
 const (
 	BADTOKEN = Token(iota) // 无效字符
 

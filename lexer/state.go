@@ -2,6 +2,7 @@ package lexer
 
 type State int
 
+// DFA自动机状态
 const (
 	START = State(iota)
 	INNUM

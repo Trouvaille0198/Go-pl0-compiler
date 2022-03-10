@@ -29,6 +29,7 @@ func (l *Lexer) getCh() (ch rune, isEnd bool) {
 	if ch == '\n' {
 		l.line++
 	}
+	ch = utils.ToLower(ch)
 	return
 }
 
@@ -175,6 +176,5 @@ outerLoop:
 			continue outerLoop
 		}
 		ch, isEnd = l.getCh() // 读取下一个字符
-		ch = utils.ToLower(ch)
 	}
 }

@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 )
@@ -19,7 +20,7 @@ func TestExp1(t *testing.T) {
 	}
 	for k, v := range hash {
 		res := "(" + k + "," + strconv.Itoa(v) + ")"
-		t.Log(res)
+		fmt.Println(res)
 	}
 }
 
@@ -28,7 +29,7 @@ func showLexResult(t *testing.T) {
 	lexer := NewLexer(filepath)
 	lexer.GetSym()
 	for _, sym := range lexer.symbols {
-		t.Log(sym.String())
+		fmt.Println(sym.String())
 	}
 }
 
