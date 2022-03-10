@@ -175,5 +175,6 @@ outerLoop:
 			continue outerLoop
 		}
 		ch, isEnd = l.getCh() // 读取下一个字符
+		ch = utils.ToLower(ch)
 	}
 }

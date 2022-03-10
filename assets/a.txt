@@ -2,6 +2,6 @@ const num=100
 var a1, b2
 begin
     read(a1)
-    b2:=a1+num
+    b2:=A1+nUm
     write(a1,b2)
 end.
