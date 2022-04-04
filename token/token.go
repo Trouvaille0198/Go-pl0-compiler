@@ -10,6 +10,7 @@ func init() {
 	initOptHash()
 }
 
+// Token 符号枚举编号
 type Token int
 
 // 符号枚举
@@ -123,7 +124,7 @@ var tokens = [...]string{
 	SEMICOLONSYM: ";",
 	BECOMESSYM:   ":=",
 
-	// 以下符号不会再程序中出现
+	// 以下符号不会在程序中出现
 	BADTOKEN:  "无效字符",
 	NUMBERSYM: "数字",
 	IDENTSYM:  "变量标识符",
@@ -175,7 +176,7 @@ var tokenDesc = [...]string{
 	EOFSYM: "EOF",
 }
 
-// String 返回Token的字符串表示
+// String 返回Token的字符串描述
 func (t Token) String() string {
 	if 0 <= t && t < Token(len(tokenDesc)) {
 		return tokenDesc[t]
@@ -184,8 +185,13 @@ func (t Token) String() string {
 	}
 }
 
-// StringInCode 返回Token在程序中的字面量表示
-func (t Token) StringInCode() string {
+// GetDesc 返回Token的字符串描述
+func (t Token) GetDesc() string {
+	return t.String()
+}
+
+// GetLit 返回Token在程序中的字面量表示
+func (t Token) GetLit() string {
 	if 0 <= t && t < Token(len(tokens)) {
 		return tokens[t]
 	} else {

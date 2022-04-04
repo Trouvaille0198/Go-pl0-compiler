@@ -2,9 +2,12 @@ package lexer
 
 import (
 	"gopl0/fp"
+	"gopl0/symbol"
 	"gopl0/token"
 	"gopl0/utils"
-	"strconv"
+	"io/ioutil"
+	"log"
+	"strings"
 )
 
 const (
@@ -12,42 +15,26 @@ const (
 	MAX_NUM_SIZE   = 25
 )
 
+// Lexer 词法分析器
 type Lexer struct {
 	file    *fp.File
-	line    int      // 当前所在行号
-	symbols []Symbol // 符号数组
+	curLine int             // 当前所在行号
+	Symbols []symbol.Symbol // 符号数组
 }
 
 func NewLexer(filepath string) *Lexer {
 	file := fp.NewFile(filepath)
-	return &Lexer{file: file, line: 1}
+	return &Lexer{file: file, curLine: 1}
 }
 
 // getCh 读取一个字符
 func (l *Lexer) getCh() (ch rune, isEnd bool) {
 	ch, isEnd = l.file.Read()
 	if ch == '\n' {
-		l.line++
+		l.curLine++
 	}
 	ch = utils.ToLower(ch)
 	return
-}
-
-// Symbol 符号
-type Symbol struct {
-	Id    token.Token
-	Value []rune // 用户自定义的标识符值(若有)
-	Num   int    // 用户自定义的数(若有)
-}
-
-func (s *Symbol) String() string {
-	if s.Id.IsIdent() {
-		return "(indent, " + string(s.Value) + ")"
-	}
-	if s.Id.IsNumber() {
-		return "(number, " + strconv.Itoa(s.Num) + ")"
-	}
-	return "(" + s.Id.String() + ", " + s.Id.StringInCode() + ")"
 }
 
 // GetSym DFA方式获取符号
@@ -57,7 +44,7 @@ func (l *Lexer) GetSym() {
 	var char [MAX_TOKEN_SIZE]rune // 当前识别的标识符或关键字
 	var charIndex int             // 当前识别的标识符或关键字的索引
 
-	curState := START
+	curState := START // 当前状态
 	ch, isEnd := l.getCh()
 outerLoop:
 	for !isEnd {
@@ -91,7 +78,7 @@ outerLoop:
 				// 单独字符
 				curState = START
 				if optToken, ok := token.GetOptToken(string(ch)); ok {
-					l.symbols = append(l.symbols, Symbol{Id: optToken})
+					l.Symbols = append(l.Symbols, symbol.Symbol{Tok: optToken, Line: l.curLine})
 				} else {
 					panic("未知字符: " + string(ch))
 				}
@@ -106,7 +93,8 @@ outerLoop:
 				if numLen > MAX_NUM_SIZE {
 					panic("数字过长")
 				} else {
-					l.symbols = append(l.symbols, Symbol{Id: token.NUMBERSYM, Num: num})
+					l.Symbols = append(l.Symbols,
+						symbol.Symbol{Tok: token.NUMBERSYM, Num: num, Line: l.curLine})
 				}
 				num, numLen = 0, 0
 				continue outerLoop // 暂停对下一个字符的读取
@@ -131,9 +119,10 @@ outerLoop:
 				if idToken == token.IDENTSYM {
 					newVal := make([]rune, charIndex)
 					copy(newVal, char[:charIndex])
-					l.symbols = append(l.symbols, Symbol{Id: idToken, Value: newVal})
+					l.Symbols = append(
+						l.Symbols, symbol.Symbol{Tok: idToken, Value: newVal, Line: l.curLine})
 				} else {
-					l.symbols = append(l.symbols, Symbol{Id: idToken})
+					l.Symbols = append(l.Symbols, symbol.Symbol{Tok: idToken, Line: l.curLine})
 				}
 
 				charIndex = 0
@@ -151,7 +140,7 @@ outerLoop:
 				curState = GEQ
 			} else {
 				curState = START
-				l.symbols = append(l.symbols, Symbol{Id: token.GEQSYM})
+				l.Symbols = append(l.Symbols, symbol.Symbol{Tok: token.GEQSYM, Line: l.curLine})
 				continue outerLoop
 			}
 		case LES:
@@ -159,22 +148,35 @@ outerLoop:
 				curState = LEQ
 			} else {
 				curState = START
-				l.symbols = append(l.symbols, Symbol{Id: token.LEQSYM})
+				l.Symbols = append(l.Symbols, symbol.Symbol{Tok: token.LEQSYM, Line: l.curLine})
 				continue outerLoop
 			}
 		case BECOMES:
 			curState = START
-			l.symbols = append(l.symbols, Symbol{Id: token.BECOMESSYM})
+			l.Symbols = append(l.Symbols, symbol.Symbol{Tok: token.BECOMESSYM, Line: l.curLine})
 			continue outerLoop
 		case GEQ:
 			curState = START
-			l.symbols = append(l.symbols, Symbol{Id: token.GEQSYM})
+			l.Symbols = append(l.Symbols, symbol.Symbol{Tok: token.GEQSYM, Line: l.curLine})
 			continue outerLoop
 		case LEQ:
 			curState = START
-			l.symbols = append(l.symbols, Symbol{Id: token.LEQSYM})
+			l.Symbols = append(l.Symbols, symbol.Symbol{Tok: token.LEQSYM, Line: l.curLine})
 			continue outerLoop
 		}
 		ch, isEnd = l.getCh() // 读取下一个字符
+	}
+}
+
+// Save 保存词法分析结果
+func (l *Lexer) Save(path string) {
+	var builder strings.Builder
+	for _, sym := range l.Symbols {
+		builder.WriteString(sym.String())
+		builder.WriteString("\n")
+	}
+	err := ioutil.WriteFile(path, []byte(builder.String()), 0666)
+	if err != nil {
+		log.Fatal(err)
 	}
 }

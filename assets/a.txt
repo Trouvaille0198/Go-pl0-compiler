@@ -1,7 +1,7 @@
-Const num=100
-Var a1, b2
+Const num=100;
+Var a1, b2;
 Begin
-    Read(a1)
-    b2:=a1+num
-    write(A1,B2)
+    Read(a1);
+    b2:=a1+num;
+    write(A1,B2);
 End.

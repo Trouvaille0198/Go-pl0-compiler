@@ -12,9 +12,9 @@ func TestExp1(t *testing.T) {
 	lexer.GetSym()
 
 	hash := make(map[string]int)
-	for _, sym := range lexer.symbols {
+	for _, sym := range lexer.Symbols {
 		// 记录各标识符出现的次数
-		if sym.Id.IsIdent() {
+		if sym.Tok.IsIdent() {
 			hash[string(sym.Value)]++
 		}
 	}
@@ -28,11 +28,20 @@ func showLexResult(t *testing.T) {
 	filepath := "../assets/a.txt"
 	lexer := NewLexer(filepath)
 	lexer.GetSym()
-	for _, sym := range lexer.symbols {
+	for _, sym := range lexer.Symbols {
 		fmt.Println(sym.String())
 	}
 }
 
 func TestExp2(t *testing.T) {
 	showLexResult(t)
+}
+
+func TestSave(t *testing.T) {
+	filepath := "../assets/b.txt"
+	lexer := NewLexer(filepath)
+	lexer.GetSym()
+
+	savePath := "../assets/b-result.txt"
+	lexer.Save(savePath)
 }

@@ -16,6 +16,7 @@ func IsDigit(ch rune) bool {
 	return '0' <= ch && ch <= '9'
 }
 
+// ToLower 转换成小写
 func ToLower(ch rune) rune {
 	if 'A' <= ch && ch <= 'Z' {
 		return ch + ('a' - 'A')
