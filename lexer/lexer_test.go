@@ -25,7 +25,7 @@ func TestExp1(t *testing.T) {
 }
 
 func showLexResult(t *testing.T) {
-	filepath := "../assets/a.txt"
+	filepath := "../assets/c.txt"
 	lexer := NewLexer(filepath)
 	lexer.GetSym()
 	for _, sym := range lexer.Symbols {

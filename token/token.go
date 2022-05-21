@@ -28,6 +28,7 @@ const (
 	MINUSYM  // -
 	MULSYM   // *
 	SLASHSYM // /
+	MODSYM   // %
 
 	relation_optr_beg
 	EQLSYM // =
@@ -109,6 +110,7 @@ var tokens = [...]string{
 	MINUSYM:    "-",
 	MULSYM:     "*",
 	SLASHSYM:   "/",
+	MODSYM:     "%",
 	LPARENTSYM: "(",
 	RPARENTSYM: ")",
 	COMMASYM:   ",",

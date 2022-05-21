@@ -2,6 +2,8 @@ package parser
 
 import (
 	"gopl0/lexer"
+	"gopl0/parser/asm"
+	"gopl0/parser/fct"
 	"gopl0/symbol"
 	"gopl0/token"
 	"log"
@@ -17,20 +19,20 @@ type identItem struct {
 	identType IdentType // 标识符类型
 	level     int       // 所在层级
 	value     int       // 无符号整数的值
-	addr      int       // 地址 dx
+	addr      int       // 每层局部量的相对地址 dx
 }
 
 // Parser 语法分析器
 type Parser struct {
 	lexer *lexer.Lexer // 词法分析器
-	dx    int          // 地址
+	dx    int          // 当前层局部量的相对地址
 	level int          // 嵌套层数
 
 	table []identItem // 符号表
-	tx    int
+	tx    int         // 指针
 
 	//中间代码
-	codes []Asm
+	codes []asm.Asm
 	cidx  int
 
 	// 当前扫描到的symbol下标
@@ -38,7 +40,7 @@ type Parser struct {
 }
 
 func NewParser(filepath string) *Parser {
-	p := Parser{lexer: lexer.NewLexer(filepath), table: make([]identItem, 100), codes: make([]Asm, 100)}
+	p := Parser{lexer: lexer.NewLexer(filepath), table: make([]identItem, 100), codes: make([]asm.Asm, 100)}
 	return &p
 }
 
@@ -83,8 +85,8 @@ func (p *Parser) checkInTable(lit string) (id identItem, in bool) {
 }
 
 // gen 生成中间代码
-func (p *Parser) gen(fct Fct, y, z int) {
-	p.codes = append(p.codes, Asm{
+func (p *Parser) gen(fct fct.Fct, y, z int) {
+	p.codes = append(p.codes, asm.Asm{
 		Fct: fct,
 		L:   y,
 		A:   z,
@@ -177,9 +179,9 @@ func (p *Parser) factor(toks []token.Token) {
 				switch id.identType {
 				// 可能是常量或者变量
 				case Constant:
-					p.gen(Lit, 0, id.value)
+					p.gen(fct.Lit, 0, id.value)
 				case Variable:
-					p.gen(Lod, p.level-id.level, id.addr)
+					p.gen(fct.Lod, p.level-id.level, id.addr)
 				case Proc:
 					// 不允许接受过程
 					p.Error(21)
@@ -191,7 +193,7 @@ func (p *Parser) factor(toks []token.Token) {
 			p.goNextSymbol()
 		case token.NUMBERSYM: // 无符号整数
 			// TODO 判断数字有没有溢出
-			p.gen(Lit, 0, p.getCurSymbol().Num)
+			p.gen(fct.Lit, 0, p.getCurSymbol().Num)
 			p.goNextSymbol()
 		case token.LPARENTSYM: // 左括号
 			p.goNextSymbol()
@@ -200,7 +202,7 @@ func (p *Parser) factor(toks []token.Token) {
 			if p.getCurSymbol().Tok == token.RPARENTSYM {
 				p.goNextSymbol()
 			} else {
-				// TODO 缺少右括号
+				// 缺少右括号
 				p.Error(22)
 			}
 		}
@@ -212,17 +214,20 @@ func (p *Parser) factor(toks []token.Token) {
 // <项> → <因子>{<乘除运算符><因子>}
 func (p *Parser) term(toks []token.Token) {
 	// <因子>
-	newToks := append(toks, []token.Token{token.MULSYM, token.SLASHSYM}...)
+	newToks := append(toks, []token.Token{token.MULSYM, token.SLASHSYM, token.MODSYM}...)
 	p.factor(newToks)
 	// {<乘除运算符><因子>}
-	for p.getCurSymbol().Tok == token.MULSYM || p.getCurSymbol().Tok == token.SLASHSYM {
+	for p.getCurSymbol().Tok == token.MULSYM || p.getCurSymbol().Tok == token.SLASHSYM || p.getCurSymbol().Tok == token.MODSYM {
 		opt := p.getCurSymbol().Tok
 		p.goNextSymbol()
 		p.factor(newToks)
+		// TODO 对取余的中间代码处理
 		if opt == token.MULSYM {
-			p.gen(Opr, 0, 4) // 乘法
+			p.gen(fct.Opr, 0, 4) // 乘法
+		} else if opt == token.MULSYM {
+			p.gen(fct.Opr, 0, 5) // 除法
 		} else {
-			p.gen(Opr, 0, 5) // 除法
+			p.gen(fct.Opr, 0, 6) // 取余 肯定不是6
 		}
 	}
 }
@@ -239,7 +244,7 @@ func (p *Parser) expression(toks []token.Token) {
 		p.goNextSymbol()
 		p.term(newToks)
 		if opt == token.MINUSYM {
-			p.gen(Opr, 0, 1)
+			p.gen(fct.Opr, 0, 1)
 		}
 	} else {
 		p.term(newToks)
@@ -251,9 +256,9 @@ func (p *Parser) expression(toks []token.Token) {
 
 		p.term(newToks)
 		if opt == token.PLUSSYM {
-			p.gen(Opr, 0, 2) // 加
+			p.gen(fct.Opr, 0, 2) // 加
 		} else {
-			p.gen(Opr, 0, 3) // 减
+			p.gen(fct.Opr, 0, 3) // 减
 		}
 	}
 }
@@ -265,7 +270,7 @@ func (p *Parser) condition(toks []token.Token) {
 		// odd<表达式>
 		p.goNextSymbol()
 		p.expression(toks)
-		p.gen(Opr, 0, 6)
+		p.gen(fct.Opr, 0, 6)
 	} else {
 		// <表达式><关系运算符><表达式>
 		p.expression(append(toks, ExpressionSelect...))
@@ -276,17 +281,17 @@ func (p *Parser) condition(toks []token.Token) {
 			p.expression(toks)
 			switch relopt {
 			case token.EQLSYM:
-				p.gen(Opr, 0, 8) // =
+				p.gen(fct.Opr, 0, 8) // =
 			case token.NEQSYM:
-				p.gen(Opr, 0, 9) // #
+				p.gen(fct.Opr, 0, 9) // #
 			case token.LESSYM:
-				p.gen(Opr, 0, 10) // <
+				p.gen(fct.Opr, 0, 10) // <
 			case token.GTRSYM:
-				p.gen(Opr, 0, 11) // >
+				p.gen(fct.Opr, 0, 11) // >
 			case token.LEQSYM:
-				p.gen(Opr, 0, 12) // <=
+				p.gen(fct.Opr, 0, 12) // <=
 			case token.GEQSYM:
-				p.gen(Opr, 0, 13) // >=
+				p.gen(fct.Opr, 0, 13) // >=
 			}
 		}
 	}
@@ -326,7 +331,7 @@ func (p *Parser) statement(toks []token.Token) {
 		// 表达式
 		p.expression(toks)
 		if ok {
-			p.gen(Sto, p.level-idName.level, idName.addr)
+			p.gen(fct.Sto, p.level-idName.level, idName.addr)
 		}
 	case token.CALLSYM:
 		// <过程调用语句> → call<标识符>
@@ -335,7 +340,7 @@ func (p *Parser) statement(toks []token.Token) {
 			id, ok := p.checkInTable(p.getCurSymbol().GetLit())
 			if ok {
 				if id.identType.IsProcedure() {
-					p.gen(Cal, p.level-id.level, id.addr)
+					p.gen(fct.Cal, p.level-id.level, id.addr)
 				} else {
 					// 非过程标识符不可被调用
 					p.Error(15)
@@ -362,7 +367,7 @@ func (p *Parser) statement(toks []token.Token) {
 		}
 		// TODO 看不懂
 		cidx := p.cidx // 挖坑，false集的 a 需要时then后面的语句？
-		p.gen(Jpc, 0, 0)
+		p.gen(fct.Jpc, 0, 0)
 		// 递归语句
 		p.statement(toks)
 		p.codes[cidx].A = p.cidx // false集，也就是else的部分？没有else?
@@ -388,7 +393,7 @@ func (p *Parser) statement(toks []token.Token) {
 		// 条件
 		p.condition(append(toks, token.DOSYM))
 		cidx2 := p.cidx // 退出循环体的地址后面分配好代码后回填
-		p.gen(Jpc, 0, 0)
+		p.gen(fct.Jpc, 0, 0)
 		if p.getCurSymbol().Tok.IsDo() {
 			p.goNextSymbol()
 		} else {
@@ -397,7 +402,7 @@ func (p *Parser) statement(toks []token.Token) {
 		}
 		// 语句
 		p.statement(toks)
-		p.gen(Jmp, 0, cidx1)
+		p.gen(fct.Jmp, 0, cidx1)
 		p.codes[cidx2].A = p.cidx
 	case token.READSYM:
 		//  <读语句> → read(<标识符>{,<标识符>})
@@ -420,8 +425,8 @@ func (p *Parser) statement(toks []token.Token) {
 					p.Error(26)
 				}
 				if ok {
-					p.gen(Opr, 0, 14)                     // 读入数字放栈顶
-					p.gen(Sto, p.level-id.level, id.addr) // 从栈顶放到相应位置
+					p.gen(fct.Opr, 0, 14)                     // 读入数字放栈顶
+					p.gen(fct.Sto, p.level-id.level, id.addr) // 从栈顶放到相应位置
 				}
 			} else {
 				// 不是标识符
@@ -449,8 +454,8 @@ func (p *Parser) statement(toks []token.Token) {
 					p.Error(26)
 				}
 				if ok {
-					p.gen(Opr, 0, 14)                     //读入数字放栈顶
-					p.gen(Sto, p.level-id.level, id.addr) //从栈顶放到相应位置
+					p.gen(fct.Opr, 0, 14)                     //读入数字放栈顶
+					p.gen(fct.Sto, p.level-id.level, id.addr) //从栈顶放到相应位置
 				}
 			} else {
 				// 不是标识符
@@ -480,8 +485,8 @@ func (p *Parser) statement(toks []token.Token) {
 						p.Error(28)
 						ok = false
 					} else if id.identType.IsConstant() {
-						p.gen(Lit, 0, id.value) //从相应位置读到栈顶
-						p.gen(Opr, 0, 15)       //从栈顶显示出来
+						p.gen(fct.Lit, 0, id.value) //从相应位置读到栈顶
+						p.gen(fct.Opr, 0, 15)       //从栈顶显示出来
 						ok = false
 					}
 				} else {
@@ -489,8 +494,8 @@ func (p *Parser) statement(toks []token.Token) {
 					p.Error(26)
 				}
 				if ok {
-					p.gen(Lod, p.level-id.level, id.addr) //从相应位置读到栈顶
-					p.gen(Opr, 0, 15)                     //从栈顶显示出来
+					p.gen(fct.Lod, p.level-id.level, id.addr) //从相应位置读到栈顶
+					p.gen(fct.Opr, 0, 15)                     //从栈顶显示出来
 				}
 			} else {
 				// 不是标识符
@@ -513,8 +518,8 @@ func (p *Parser) statement(toks []token.Token) {
 						p.Error(28)
 						ok = false
 					} else if id.identType.IsConstant() {
-						p.gen(Lit, 0, id.value) //从相应位置读到栈顶
-						p.gen(Opr, 0, 15)       //从栈顶显示出来
+						p.gen(fct.Lit, 0, id.value) //从相应位置读到栈顶
+						p.gen(fct.Opr, 0, 15)       //从栈顶显示出来
 						ok = false
 					}
 				} else {
@@ -522,8 +527,8 @@ func (p *Parser) statement(toks []token.Token) {
 					p.Error(26)
 				}
 				if ok {
-					p.gen(Lod, p.level-id.level, id.addr) //从相应位置读到栈顶
-					p.gen(Opr, 0, 15)                     //从栈顶显示出来
+					p.gen(fct.Lod, p.level-id.level, id.addr) //从相应位置读到栈顶
+					p.gen(fct.Opr, 0, 15)                     //从栈顶显示出来
 				}
 			} else {
 				// 不是标识符
@@ -553,7 +558,7 @@ func (p *Parser) block(toks []token.Token) {
 	// p.dx = 3
 	tx0 := p.tx
 	p.table[p.tx].addr = p.cidx
-	p.gen(Jmp, 0, 0)
+	p.gen(fct.Jmp, 0, 0)
 
 	if p.level > MAX_LEVEL {
 		// 嵌套层次太大
@@ -647,9 +652,9 @@ func (p *Parser) block(toks []token.Token) {
 	p.codes[p.table[tx0].addr].A = p.cidx
 	p.table[tx0].addr = p.cidx
 	//cx0 := p.cidx
-	p.gen(Int, 0, p.dx)
+	p.gen(fct.Int, 0, p.dx)
 	p.statement(append(toks, []token.Token{token.SEMICOLONSYM, token.ENDSYM}...))
-	p.gen(Opr, 0, 0)
+	p.gen(fct.Opr, 0, 0)
 	p.test(toks, 8)
 }
 
@@ -661,5 +666,10 @@ func (p *Parser) Lex() {
 func (p *Parser) Parse() {
 	// p.lexer.GetSym()
 	p.block(append(append(DeclareSelect, StatementSelect...), token.PERIODSYM))
-	log.Printf("结束\n")
+	// log.Printf("结束\n")
+}
+
+// SaveLexResult 保存词法分析结果
+func (p *Parser) SaveLexResult(path string) {
+	p.lexer.Save(path)
 }
