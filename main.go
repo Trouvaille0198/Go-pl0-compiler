@@ -8,11 +8,8 @@ import (
 func main() {
 	p := expparser.NewExpParser("./assets/c.txt")
 	p.Lex()
-	// p.ShowLexResult()
+	p.ShowLexResult()
 	p.Parse()
-	// savePath := "../assets/a-result.txt"
-	// p.SaveLexResult(savePath)
-	// fmt.Printf("%+v\n", p.FourCodes)
-	fmt.Println("12321")
+	fmt.Print("\n")
 	p.ShowFourCodes()
 }

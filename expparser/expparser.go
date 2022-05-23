@@ -66,7 +66,6 @@ func (p *ExpParser) enterFourCode(op, first, second, result string) string {
 	}
 	fc := fourCode{op: op, first: first, second: second, result: result}
 	p.FourCodes[p.fctx] = fc
-	// fmt.Printf("%s\n", fc)
 	return result
 }
 
@@ -151,9 +150,10 @@ func (p *ExpParser) test(toks []token.Token, t int) {
 // factor 因子的产生式
 // <因子> → <标识符>|<无符号整数>|(<表达式>)
 func (p *ExpParser) factor() string {
-	first := string(p.getCurSymbol().Value)
+	var first string
 	switch p.getCurSymbol().Tok {
 	case token.IDENTSYM: // 标识符
+		first = string(p.getCurSymbol().Value)
 		// 判断标识符是否已经定义 并且生成中间代码
 		id, ok := p.checkInTable(p.getCurSymbol().GetLit())
 		if ok {
@@ -174,6 +174,7 @@ func (p *ExpParser) factor() string {
 		}
 		p.goNextSymbol()
 	case token.NUMBERSYM: // 无符号整数
+		first = strconv.Itoa(p.getCurSymbol().Num)
 		p.gen(fct.Lit, 0, p.getCurSymbol().Num)
 		p.goNextSymbol()
 	case token.LPARENTSYM: // 左括号
